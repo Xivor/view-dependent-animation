@@ -50,7 +50,8 @@ int main(int argc, char *argv[]) {
     ("H,headless", "prevents window from popping up. Useful for just generating a video")
     ("f,frames", "specify a number of frames to generate", cxxopts::value<int>()->default_value("-1"))
     ("t,target-fps", "target fps of the animation", cxxopts::value<int>()->default_value("-1"))
-    ("h,help", "shows usage");
+    ("h,help", "shows usage")
+    ("d,debug", "activate debug features");
   auto result = options.parse(argc, argv);
   if (result.count("help")) {
     std::cout << options.help() << std::endl;
@@ -61,6 +62,7 @@ int main(int argc, char *argv[]) {
   bool headless = result.count("headless");
   int frames = result["frames"].as<int>();
   int targetFps = result["target-fps"].as<int>();
+  bool debug = result.count("debug");
 
   if (headless) {
     glfwInit();
@@ -93,6 +95,8 @@ int main(int argc, char *argv[]) {
 
   ShaderKey debugBoneShaderKey = ShaderKey{ "debug_bone.vert", "debug_bone.frag"};
   ShaderManager::load(debugBoneShaderKey);
+  ShaderKey jointShaderKey = ShaderKey{ "joint_hybrid.vert", "joint_hybrid.frag"};
+  ShaderManager::load(jointShaderKey);
 
   staticMeshData = Geometry::makePlane();
   meshHandle = assets.add(std::make_unique<StaticMesh>(staticMeshData.vertices, staticMeshData.indices));
@@ -103,24 +107,32 @@ int main(int argc, char *argv[]) {
   obj.transform.scale = glm::vec3(100.f);
   scene.objects.push_back(obj);
 
-  meshHandle = assets.add(std::make_unique<SmearMesh>("assets/meshes/tai lung melee with anim/tai lung melee with anim.fbx"));
+  // meshHandle = assets.add(std::make_unique<SmearMesh>("assets/meshes/tai lung melee with anim/tai lung melee with anim.fbx"));
+  meshHandle = assets.add(std::make_unique<SmearMesh>("assets/meshes/Tpose.fbx"));
   sk = assets.get(meshHandle)->shaderKeysMap();
   sk[PassTag::Hybrid] = ShaderKey{"hybrid_smear.vert", "hybrid_toon_shading.frag"};
-  {
-    constexpr int   GRID    = 3;//5
-    constexpr float SPACING = 2.0f;
-    constexpr float OFFSET  = (GRID - 1) * SPACING * 0.5f;
-    for (int row = 0; row < GRID; row++) {
-      for (int col = 0; col < GRID; col++) {
-        Object o = Object{sk};
-        o.meshHandle       = meshHandle;
-        o.material.color   = {0.85f, 0.7f, 0.55f};
-        o.transform.scale  = glm::vec3(0.01f);
-        o.transform.position = glm::vec3(col * SPACING - OFFSET, 0.f, row * SPACING - OFFSET);
-        scene.objects.push_back(o);
-      }
-    }
-  }
+
+  Object o = Object{sk};
+  o.meshHandle       = meshHandle;
+  o.material.color   = {0.85f, 0.7f, 0.55f};
+  o.transform.scale  = glm::vec3(0.01f);
+  o.transform.position = glm::vec3(0.f, 0.f, 0.f);
+  scene.objects.push_back(o);
+  // {
+  //   constexpr int   GRID    = 3;//5
+  //   constexpr float SPACING = 2.0f;
+  //   constexpr float OFFSET  = (GRID - 1) * SPACING * 0.5f;
+  //   for (int row = 0; row < GRID; row++) {
+  //     for (int col = 0; col < GRID; col++) {
+  //       Object o = Object{sk};
+  //       o.meshHandle       = meshHandle;
+  //       o.material.color   = {0.85f, 0.7f, 0.55f};
+  //       o.transform.scale  = glm::vec3(0.01f);
+  //       o.transform.position = glm::vec3(col * SPACING - OFFSET, 0.f, row * SPACING - OFFSET);
+  //       scene.objects.push_back(o);
+  //     }
+  //   }
+  // }
 
   Light light;
 

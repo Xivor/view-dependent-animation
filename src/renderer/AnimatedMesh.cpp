@@ -1,4 +1,6 @@
 #include "renderer/AnimatedMesh.h"
+#include "glm/ext/matrix_float4x4.hpp"
+#include "glm/ext/matrix_transform.hpp"
 #include "renderer/Shader.h"
 #include "renderer/ShaderManager.h"
 #include "renderer/TextureLoader.h"
@@ -11,6 +13,8 @@
 #include <imgui.h>
 
 #include "RenderPipeline.h"
+
+#define DEBUG
 
 // TODO globally change "node" for "bone" if the node is guaranteed to be a
 // bone. Lots of headaches because of that uncertainty.
@@ -291,6 +295,7 @@ void AnimatedMesh::parseMeshes() {
                 }
                 Log::info("   - bone " + std::to_string(boneID) + " influences " + std::to_string(mesh->mNumVertices) + " vertices");
             }
+            m_joints_world_pos.resize(mesh->mNumBones);
         }
         else {
             Log::info(" - no bones (cannot be animated !)");
@@ -366,60 +371,6 @@ void AnimatedMesh::populateBuffers() {
 void AnimatedMesh::setTimer(const double& minTime, const double& maxTime) {
     this->timer = Timer(minTime,maxTime);
 }
-
-// sets bone root (c_r), bone tip (c_t) and bone length
-// TODO try and invert the logic (pick the c_t first and then c_r by getting the parent)
-// VERSION THAT TAKES FIRST CHILD TO CALCULATE TIP POSITION
-// void AnimatedMesh::getBonePosition(const aiNode *currentNode,
-//                                    const std::vector<glm::mat4> &transforms,
-//                                    glm::vec3 &c_r,
-//                                    glm::vec3 &c_t
-// ) {
-//   auto getGlobalTransform = [&](const std::string &name) -> glm::mat4 {
-//     auto it = m_boneNameToIndexMap.find(name);
-//     if (it != m_boneNameToIndexMap.end()) {
-//       return transforms[it->second];
-//     }
-//     return glm::mat4();
-//   };
-//   c_r = glm::vec3(getGlobalTransform(currentNode->mName.C_Str())[3]); // root pos = position of current node
-
-//   std::vector<const aiNode*> childrenBones;
-//   getChildrenBones(currentNode, childrenBones);
-//   if (childrenBones.empty()) {
-//     // suppose length 1
-//     // TODO improve fallback by using the dummy nodes that are likely parents of the leaf node
-//     c_t = c_r + glm::vec3(.0f, .5f, .0f);
-//     return;
-//   }
-//   const aiNode* childBone = childrenBones[0];
-//   c_t = glm::vec3(getGlobalTransform(childBone->mName.C_Str())[3]);
-// }
-
-// VERSION THAT GOES REVERSE BUT DOESN'T INVERT ROOT AND TIP AFTER
-// void AnimatedMesh::getBonePosition(const aiNode *currentNode,
-//                                    const std::vector<glm::mat4> &transforms,
-//                                    glm::vec3 &c_r,
-//                                    glm::vec3 &c_t
-// ) {
-//   auto getGlobalTransform = [&](const std::string &name) -> glm::mat4 {
-//     auto it = m_boneNameToIndexMap.find(name);
-//     if (it != m_boneNameToIndexMap.end()) {
-//       return transforms[it->second];
-//     }
-//     return glm::mat4();
-//   };
-//   c_t = glm::vec3(getGlobalTransform(currentNode->mName.C_Str())[3]); // root pos = position of current node
-
-//   const aiNode* parentBone = getParentBone(currentNode);
-//   if (parentBone) {
-//     glm::vec3 parent_c_t = glm::vec3(getGlobalTransform(parentBone->mName.C_Str())[3]);
-//     c_r = parent_c_t;
-//     return;
-//   }
-//   // TODO improve fallback by using the dummy nodes that are likely parents of the leaf node
-//   c_r = c_t + glm::vec3(0, 0.1f, 0);
-// }
 
 void AnimatedMesh::getBonePosition(const aiNode *currentNode,
                                    const std::vector<glm::mat4> &transforms,

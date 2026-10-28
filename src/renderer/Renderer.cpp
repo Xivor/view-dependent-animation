@@ -1,4 +1,6 @@
 #include "renderer/Renderer.h"
+#include "glm/ext/matrix_float4x4.hpp"
+#include "renderer/AnimatedMesh.h"
 #include "renderer/ShaderManager.h"
 #include "renderer/Mesh.h"
 #include "renderer/Shader.h"
@@ -40,6 +42,13 @@ void Renderer::setup(Scene *scene, const Window *window, const AssetManager &ass
     scene->setup();
 }
 
+// TODO each time we add a shader we introduce a block of code in this
+// monolithic function. Transform this function to be a
+// bunch of verifications (if there is a handler x...) and then call a function
+// just to bind values to that specific shader.
+// That way, introducing a shader in our project would be just a matter of
+// adding that verification / function call here, and adding
+// a method to deal with that shader specifically.
 void Renderer::render(Scene* scene,Window* window, Cinematic* cinematic, const AssetManager& assets, float aspect, float dt) {
     RenderContext ctx{};
     ctx.camera = &scene->main_camera;
@@ -111,7 +120,47 @@ void Renderer::render(Scene* scene,Window* window, Cinematic* cinematic, const A
         ++m_drawCalls;
     }
 
-    glDisable(GL_DEPTH_TEST);
+    // draw joints
+    ShaderHandle jointShaderHandle = ShaderManager::getShaderHandleWithKey(ShaderKey{"joint_hybrid.vert", "joint_hybrid.frag"});
+    if (jointShaderHandle != 0) {
+      const Shader& jointShader = ShaderManager::get(jointShaderHandle);
+      jointShader.bind();
+      jointShader.set("view", scene->main_camera.view());
+      jointShader.set("proj", scene->main_camera.projection(aspect));
+      jointShader.set("jointColor", glm::vec3(0.0f, 1.0f, 0.0f));
+
+      glDisable(GL_DEPTH_TEST);
+      glEnable(GL_PROGRAM_POINT_SIZE);
+
+      GLuint vao;
+      glGenVertexArrays(1, &vao);
+      glBindVertexArray(vao);
+
+      for (int i = 0; i < scene->objects.size(); i++) {
+        auto &obj = scene->objects[i];
+        const Mesh *mesh = assets.get(obj.meshHandle);
+        const auto *animatedMesh = dynamic_cast<const AnimatedMesh*>(mesh);
+
+        if (animatedMesh) {
+          std::vector<glm::mat4> transforms;
+          animatedMesh->getBoneTransforms(transforms);
+          glm::mat4 objModelMatrix = obj.transform.matrix();
+          for (int j = 0; j < transforms.size(); ++j) {
+            glm::vec3 jointLocalPos = glm::vec3(transforms[j][3]);
+            glm::vec3 jointWorldPos = glm::vec3(objModelMatrix * glm::vec4(jointLocalPos, 1.0f));
+            glm::mat4 model = glm::translate(glm::mat4(1.0f), jointWorldPos);
+            jointShader.set("model", model);
+            jointShader.set("jointId", static_cast<unsigned int>(j));
+            glDrawArrays(GL_POINTS, 0, 1);
+          }
+        }
+      }
+      glBindVertexArray(0);
+      glDeleteVertexArrays(1, &vao);
+      glDisable(GL_PROGRAM_POINT_SIZE);
+      glEnable(GL_DEPTH_TEST);
+    }
+
 
     //**************************draw debug for smear******************************
     // ShaderHandle debugHandle = ShaderManager::getShaderHandleWithKey(ShaderKey{"debug_bone.vert", "debug_bone.frag"});

@@ -11,7 +11,7 @@
 //#define DEBUG
 
 void SelectionManager::select(glm::vec2 mousePos, unsigned int window_h) {
-    
+
 
 
 
@@ -48,11 +48,11 @@ void SelectionManager::select(glm::vec2 mousePos, unsigned int window_h) {
     glReadBuffer(GL_COLOR_ATTACHMENT1);
 
     //GLuint pixelId = 0;
-    glm::uvec4 piwelMetatData = {0, 0, 0, 0};
+    glm::uvec4 pixelMetatData = {0, 0, 0, 0};
 
-    glReadPixels(x, window_h - y, 1, 1, GL_RGBA_INTEGER, GL_UNSIGNED_INT, &piwelMetatData);
+    glReadPixels(x, window_h - y, 1, 1, GL_RGBA_INTEGER, GL_UNSIGNED_INT, &pixelMetatData);
 
-    GLuint pixelId = piwelMetatData[0];
+    GLuint pixelId = pixelMetatData[0];
 
     if (pixelId == 0) {
         m_selection = nullptr;
@@ -98,7 +98,7 @@ void SelectionManager::select(glm::vec2 mousePos, unsigned int window_h) {
     glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
    #endif
 
-    
+
 }
 
 void SelectionManager::draw() {

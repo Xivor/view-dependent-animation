@@ -16,6 +16,8 @@
 #include "RenderPipeline.h"
 #include "core/Timer.h"
 #include "assimp/Importer.hpp"
+#include "glm/ext/matrix_float4x4.hpp"
+#include "glm/ext/vector_float3.hpp"
 #include "renderer/Mesh.h"
 
 static constexpr unsigned int MAX_NUM_BONES_PER_VERTEX = 16;
@@ -76,6 +78,9 @@ public:
         timer.reset();
         timer.start();
     }
+    // HACK since I need the joint positions I am turning this public, but
+    // there's maybe another better way to do so
+    void getBoneTransforms(std::vector<glm::mat4>& transforms) const;
 
 protected:
 
@@ -92,6 +97,7 @@ protected:
     Assimp::Importer m_importer;
     std::vector<AnimatedVertex> m_vertices = {};
     std::vector<uint32_t> m_indices = {};
+    std::vector<glm::vec3> m_joints_world_pos = {};
     GLuint m_vao = 0, m_vbo = 0, m_ebo = 0;
     GLuint bones_data_ssbo = 0;
     GLuint m_textureID = 0;
@@ -118,7 +124,6 @@ protected:
 
     void buildNodeMap(const aiNode* node, int h);
     void calculateGlobalTransformsAtTick(const double& animationTicks,const aiNode* node, const glm::mat4& parentTransformation, std::vector<glm::mat4> &outBoneGlobalTransform) const;
-    void getBoneTransforms(std::vector<glm::mat4>& transforms) const;
     void parseMeshes();
     void populateBuffers();
     void setTimer(const double& minTime, const double& maxTime);
