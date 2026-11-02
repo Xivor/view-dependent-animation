@@ -41,7 +41,7 @@ struct Object {
     std::map<PassTag, ShaderHandle> passTagShaderHandle; // don't touch, filled up at runtime from passTagShaderSpecifications in main.c with ShaderManager.load()
     explicit Object(const std::map<PassTag, ShaderKey>& passTagSpecifications) : passTagShaderSpecifications(passTagSpecifications) {}
 
-    void draw(Mesh* mesh = nullptr, bool* p_open = nullptr);
+    void draw(Mesh* mesh = nullptr, int selectedJointId = -1, bool* p_open = nullptr);
 };
 
 /**

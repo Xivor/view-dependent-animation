@@ -295,7 +295,6 @@ void AnimatedMesh::parseMeshes() {
                 }
                 Log::info("   - bone " + std::to_string(boneID) + " influences " + std::to_string(mesh->mNumVertices) + " vertices");
             }
-            m_joints_world_pos.resize(mesh->mNumBones);
         }
         else {
             Log::info(" - no bones (cannot be animated !)");
@@ -477,7 +476,7 @@ void AnimatedMesh::loadAlbedoTexture(const std::string& meshPath) {
     }
 }
 
-void AnimatedMesh::drawMeshUI() {
+void AnimatedMesh::drawMeshUI(int selectedJointId) {
     if (!m_scene || m_scene->mNumAnimations == 0) {
         ImGui::TextDisabled("No animations.");
         return;
@@ -496,5 +495,26 @@ void AnimatedMesh::drawMeshUI() {
             timer.start();
         }
         if (selected) ImGui::SetItemDefaultFocus();
+    }
+
+    // TODO continuar daqui pra mostrar texto sobre as juntas da mesh na UI
+    ImGui::Text("Joints");
+    ImGui::Separator();
+    std::vector<glm::mat4> transforms;
+    getBoneTransforms(transforms);
+    for (int i = 0; i < transforms.size(); i++) {
+      glm::vec3 jointLocalPos = glm::vec3(transforms[i][3]);
+      glm::vec3 jointGlobalPos = m_bonesInfo[i].finalTransformationMatrix[3];
+      std::string label = "Joint " + std::to_string(i) + ": " + glm::to_string(jointGlobalPos);
+      // ImGui::Text("Local Position: %.2f, %.2f, %.2f", jointLocalPos.x, jointLocalPos.y, jointLocalPos.z);
+      // ImGui::Text("Global Position: %.2f, %.2f, %.2f", jointGlobalPos.x, jointGlobalPos.y, jointGlobalPos.z);
+      bool selected = (selectedJointId == i);
+      if (selected) {
+        ImGui::TextColored(ImVec4(0.0, 1.0, 0.0, 1.0), "%s (Selected)", label.c_str());
+        // ImGui::Indent();
+        // ImGui::Unindent();
+      } else {
+        ImGui::Text("%s", label.c_str());
+      }
     }
 }
