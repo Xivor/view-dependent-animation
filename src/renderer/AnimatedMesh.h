@@ -70,7 +70,7 @@ public:
     AnimatedMesh& operator=(const AnimatedMesh&) = delete;
     void uploadUniforms(const Shader& shader, const RenderContext& ctx) const override;
     void draw() const override;
-    void drawMeshUI() override;
+    void drawMeshUI(int selectedJointId) override;
     Timer* getTimer() {
         return &timer;
     }
@@ -97,7 +97,6 @@ protected:
     Assimp::Importer m_importer;
     std::vector<AnimatedVertex> m_vertices = {};
     std::vector<uint32_t> m_indices = {};
-    std::vector<glm::vec3> m_joints_world_pos = {};
     GLuint m_vao = 0, m_vbo = 0, m_ebo = 0;
     GLuint bones_data_ssbo = 0;
     GLuint m_textureID = 0;

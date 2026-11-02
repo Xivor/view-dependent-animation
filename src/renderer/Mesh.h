@@ -20,7 +20,7 @@ public:
      */
     virtual void draw() const = 0;
     virtual void uploadUniforms(const Shader& shader, const RenderContext& ctx) const;
-    virtual void drawMeshUI() {}
+    virtual void drawMeshUI(int selectedJointId) {}
     virtual ~Mesh() = default;
 
     Mesh()                         = default;
