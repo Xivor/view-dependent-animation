@@ -150,6 +150,7 @@ void Renderer::render(Scene* scene,Window* window, Cinematic* cinematic, const A
             glm::vec3 jointWorldPos = glm::vec3(objModelMatrix * glm::vec4(jointLocalPos, 1.0f));
             glm::mat4 model = glm::translate(glm::mat4(1.0f), jointWorldPos);
             jointShader.set("model", model);
+            jointShader.set("objectId", static_cast<unsigned int>(i + 1));
             jointShader.set("jointId", static_cast<unsigned int>(j));
             glDrawArrays(GL_POINTS, 0, 1);
           }

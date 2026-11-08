@@ -11,54 +11,30 @@
 //#define DEBUG
 
 void SelectionManager::select(glm::vec2 mousePos, unsigned int window_h) {
-
-
-
-
-    // auto fbo = m_render_pipeline->getPassFbo("Mesh ID Render Pass");
-
-    // if (fbo == 0) {
-    //     m_selection = nullptr;
-    //     return;
-    // }
-    // glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
-
-    // glReadBuffer(GL_COLOR_ATTACHMENT0);
-
-    // int x = static_cast<int>(mousePos.x);
-    // int y = static_cast<int>(mousePos.y);
-
-    // GLuint pixelId = 0;
-
-    // glReadPixels(x, window_h - y, 1, 1, GL_RED_INTEGER, GL_UNSIGNED_INT, &pixelId);
-    // Log::info("pixelId : "+std::to_string(pixelId));
-
-    // glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-
     int x = static_cast<int>(mousePos.x);
     int y = static_cast<int>(mousePos.y);
     auto fbo = m_render_pipeline->getPassFbo("Hybrid Render Pass");
 
     if (fbo == 0) {
         m_selection = nullptr;
+        m_selectedJointId = -1;
         return;
     }
     glBindFramebuffer(GL_READ_FRAMEBUFFER, fbo);
 
-    glReadBuffer(GL_COLOR_ATTACHMENT1);
+    glReadBuffer(GL_COLOR_ATTACHMENT1); // color attachment 1 -> object / joint ID
 
     //GLuint pixelId = 0;
     glm::uvec4 pixelMetatData = {0, 0, 0, 0};
-
     glReadPixels(x, window_h - y, 1, 1, GL_RGBA_INTEGER, GL_UNSIGNED_INT, &pixelMetatData);
+    GLuint objectPixelId = pixelMetatData[0];
+    GLuint jointPixelId = pixelMetatData[2];
 
-    GLuint pixelId = pixelMetatData[0];
-
-    if (pixelId == 0) {
+    if (objectPixelId == 0) {
         m_selection = nullptr;
+        m_selectedJointId = -1;
     } else {
-        size_t objectIndex = static_cast<size_t>(pixelId - 1);
-
+        size_t objectIndex = static_cast<size_t>(objectPixelId - 1);
         auto& objects = m_scene->objects;
 
         if (objectIndex < objects.size()) {
@@ -66,6 +42,12 @@ void SelectionManager::select(glm::vec2 mousePos, unsigned int window_h) {
         } else {
             m_selection = nullptr;
         }
+    }
+
+    if (jointPixelId == 0) {
+      m_selectedJointId = -1;
+    } else {
+      m_selectedJointId = static_cast<int>(jointPixelId - 1);
     }
 
     #ifdef DEBUG
@@ -104,6 +86,6 @@ void SelectionManager::select(glm::vec2 mousePos, unsigned int window_h) {
 void SelectionManager::draw() {
     if (m_selection != nullptr) {
         Mesh* mesh = m_assets ? m_assets->get(m_selection->meshHandle) : nullptr;
-        m_selection->draw(mesh);
+        m_selection->draw(mesh, m_selectedJointId);
     }
 }
