@@ -1,6 +1,7 @@
 #include "renderer/Renderer.h"
 #include "glm/ext/matrix_float4x4.hpp"
 #include "renderer/AnimatedMesh.h"
+#include "renderer/RiggedMesh.h"
 #include "renderer/ShaderManager.h"
 #include "renderer/Mesh.h"
 #include "renderer/Shader.h"
@@ -140,6 +141,7 @@ void Renderer::render(Scene* scene,Window* window, Cinematic* cinematic, const A
         auto &obj = scene->objects[i];
         const Mesh *mesh = assets.get(obj.meshHandle);
         const auto *animatedMesh = dynamic_cast<const AnimatedMesh*>(mesh);
+        const auto *riggedMesh = dynamic_cast<const RiggedMesh*>(mesh);
 
         if (animatedMesh) {
           std::vector<glm::mat4> transforms;
@@ -151,6 +153,17 @@ void Renderer::render(Scene* scene,Window* window, Cinematic* cinematic, const A
             glm::mat4 model = glm::translate(glm::mat4(1.0f), jointWorldPos);
             jointShader.set("model", model);
             jointShader.set("objectId", static_cast<unsigned int>(i + 1));
+            jointShader.set("jointId", static_cast<unsigned int>(j));
+            glDrawArrays(GL_POINTS, 0, 1);
+          }
+        } else if (riggedMesh) {
+          glm::mat4 objModelMatrix = obj.transform.matrix();
+          for (int j = 0; j < riggedMesh->m_joint_transforms.size(); ++j) {
+            glm::mat4 transform = riggedMesh->m_joint_transforms[j];
+            glm::vec3 jointLocalPos = glm::vec3(transform[3]);
+            glm::vec3 jointWorldPos = glm::vec3(objModelMatrix * glm::vec4(jointLocalPos, 1.0f));
+            glm::mat4 model = glm::translate(glm::mat4(1.0f), jointWorldPos);
+            jointShader.set("model", model);
             jointShader.set("jointId", static_cast<unsigned int>(j));
             glDrawArrays(GL_POINTS, 0, 1);
           }
