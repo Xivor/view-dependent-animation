@@ -50,9 +50,11 @@ struct AnimatedVertex {
 struct BoneInfo {
     glm::mat4 offsetMatrix;
     glm::mat4 finalTransformationMatrix;
+  int index;
+  int parent; // use IDs to identify bones
+  std::vector<int> children;
 
-    explicit BoneInfo(const glm::mat4& offsetMatrix) : offsetMatrix(offsetMatrix), finalTransformationMatrix(glm::mat4(0)) {
-
+    explicit BoneInfo(const glm::mat4& offsetMatrix) : offsetMatrix(offsetMatrix), finalTransformationMatrix(glm::identity<glm::mat4>()), index(-1), parent(-1) {
     }
 };
 
@@ -64,6 +66,7 @@ inline glm::mat4 aiMat4ToGlmMat4(const aiMatrix4x4& m) { // TODO put it somewher
 class AnimatedMesh : public Mesh {
 public:
     explicit AnimatedMesh(const std::string& path);
+    AnimatedMesh(const std::string& objPath, const std::string& jointsPath, const std::string& weightsPath);
     ~AnimatedMesh() override;
 
     AnimatedMesh(const AnimatedMesh&)            = delete;
