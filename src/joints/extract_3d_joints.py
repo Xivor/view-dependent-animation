@@ -145,18 +145,11 @@ def export_joints(path, names, joints, parents):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("source_folder")
-    # ap.add_argument("rabit_data_folder")
-    # ap.add_argument("beta")
-    # ap.add_argument("pose")
-    # ap.add_argument("trans", nargs="?")
-    # ap.add_argument("--out", help="export path (.txt, .json, .npy, .obj)")
-    # ap.add_argument("--dataroot", default="./rabit_data/")
     a = ap.parse_args()
     dataroot = "assets/RaBit/"
 
     beta = np.load(dataroot+ a.source_folder + "/3d_model/beta.npy", allow_pickle=True)
     pose = np.load(dataroot + a.source_folder + "/3d_model/pose.npy", allow_pickle=True)
-    # trans = np.load(dataroot + a.source_folder + "/3d_model/trans.npy", allow_pickle=True) if a.trans else None
 
     names, joints, _, parents = get_joints(beta, pose, None, dataroot + "rabit_data/", return_parents=True)
     for i, (nm, p) in enumerate(zip(names, joints)):
