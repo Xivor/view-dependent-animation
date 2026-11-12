@@ -68,6 +68,8 @@ set(sources
     ${SOURCE_DIR}/renderer/RenderPipeline.h
     ${SOURCE_DIR}/renderer/RiggedMesh.cpp
     ${SOURCE_DIR}/renderer/RiggedMesh.h
+    ${SOURCE_DIR}/view-dependent-deformations/CameraRecoveryEngine.cpp
+    ${SOURCE_DIR}/view-dependent-deformations/CameraRecoveryEngine.h
     src/core/MegaWindowContext.h
     src/scene/Scene.cpp
 )
@@ -111,6 +113,9 @@ LinkCXXOPTS(stylize-animation PRIVATE)
 
 include(${CMAKE_DIR}/LinkSTB.cmake)
 LinkSTB(stylize-animation PRIVATE)
+
+include(${CMAKE_DIR}/LinkEIGEN.cmake)
+LinkEIGEN(stylize-animation PRIVATE)
 
 #copy target to root
 add_custom_command(TARGET ${PROJECT_NAME}

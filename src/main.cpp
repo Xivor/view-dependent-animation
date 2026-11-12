@@ -23,6 +23,7 @@
 #include "ui/DebugConsole.h"
 #include "ui/RenderStats.h"
 #include "ui/SelectionManager.h"
+#include "view-dependent-deformations/CameraRecoveryEngine.h"
 
 static void setupGLDebugCallback() {
   glEnable(GL_DEBUG_OUTPUT);
@@ -138,6 +139,8 @@ int main(int argc, char *argv[]) {
   //     }
   //   }
   // }
+
+  CameraRecoveryEngine camRecEngine = new CameraRecoveryEngine();
 
   Light light;
 

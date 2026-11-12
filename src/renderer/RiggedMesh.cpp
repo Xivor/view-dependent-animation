@@ -65,7 +65,7 @@ void RiggedMesh::draw() const {
   glDrawElements(GL_TRIANGLES, m_indexCount, GL_UNSIGNED_INT, nullptr);
 }
 
-void RiggedMesh::drawMeshUI() {
+void RiggedMesh::drawMeshUI(int selectedJointId) {
   if (!m_scene || m_scene->mNumAnimations == 0) {
     ImGui::TextDisabled("No animations.");
     return;
