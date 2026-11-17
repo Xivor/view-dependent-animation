@@ -50,9 +50,11 @@ struct AnimatedVertex {
 struct BoneInfo {
     glm::mat4 offsetMatrix;
     glm::mat4 finalTransformationMatrix;
+  int index;
+  int parent; // use IDs to identify bones
+  std::vector<int> children;
 
-    explicit BoneInfo(const glm::mat4& offsetMatrix) : offsetMatrix(offsetMatrix), finalTransformationMatrix(glm::mat4(0)) {
-
+    explicit BoneInfo(const glm::mat4& offsetMatrix) : offsetMatrix(offsetMatrix), finalTransformationMatrix(glm::identity<glm::mat4>()), index(-1), parent(-1) {
     }
 };
 
@@ -64,13 +66,14 @@ inline glm::mat4 aiMat4ToGlmMat4(const aiMatrix4x4& m) { // TODO put it somewher
 class AnimatedMesh : public Mesh {
 public:
     explicit AnimatedMesh(const std::string& path);
+    AnimatedMesh(const std::string& objPath, const std::string& jointsPath, const std::string& weightsPath);
     ~AnimatedMesh() override;
 
     AnimatedMesh(const AnimatedMesh&)            = delete;
     AnimatedMesh& operator=(const AnimatedMesh&) = delete;
     void uploadUniforms(const Shader& shader, const RenderContext& ctx) const override;
     void draw() const override;
-    void drawMeshUI() override;
+    void drawMeshUI(int selectedJointId) override;
     Timer* getTimer() {
         return &timer;
     }
@@ -97,7 +100,6 @@ protected:
     Assimp::Importer m_importer;
     std::vector<AnimatedVertex> m_vertices = {};
     std::vector<uint32_t> m_indices = {};
-    std::vector<glm::vec3> m_joints_world_pos = {};
     GLuint m_vao = 0, m_vbo = 0, m_ebo = 0;
     GLuint bones_data_ssbo = 0;
     GLuint m_textureID = 0;

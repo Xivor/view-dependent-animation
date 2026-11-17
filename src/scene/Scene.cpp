@@ -17,7 +17,8 @@ static void ShaderDefinesDisplay(const std::set<std::string>& defines)
     }
 }
 
-void Object::draw(Mesh* mesh, bool *p_open) {
+// TODO move this function to a more adequate place
+void Object::draw(Mesh* mesh, int selectedJointId, bool *p_open) {
     if (!ImGui::Begin("Object Inspector", p_open)) {
         ImGui::End();
         return;
@@ -63,7 +64,7 @@ void Object::draw(Mesh* mesh, bool *p_open) {
     }
 
     if (mesh && ImGui::CollapsingHeader("Mesh", ImGuiTreeNodeFlags_DefaultOpen)) {
-        mesh->drawMeshUI();
+        mesh->drawMeshUI(selectedJointId);
     }
 
     ImGui::End();

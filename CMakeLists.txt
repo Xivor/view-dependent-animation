@@ -12,6 +12,7 @@ project(stylize-animation CXX)
 
 set(ENABLE_ASSIMP   ON CACHE BOOL "Add Open Asset Import Library (assimp) to the project" FORCE)
 set(ENABLE_IMGUI    ON CACHE BOOL "Add Dear ImGui to the project" FORCE)
+set(ENABLE_CNPY     ON CACHE BOOL "Add cnpy for reading .npy files to the project" FORCE)
 
 #===========================================================================================
 # GLAD CONFIGURATION
@@ -65,8 +66,10 @@ set(sources
     ${SOURCE_DIR}/ui/SelectionManager.h
     ${SOURCE_DIR}/renderer/RenderPipeline.cpp
     ${SOURCE_DIR}/renderer/RenderPipeline.h
-        src/core/MegaWindowContext.h
-        src/scene/Scene.cpp
+    ${SOURCE_DIR}/renderer/RiggedMesh.cpp
+    ${SOURCE_DIR}/renderer/RiggedMesh.h
+    src/core/MegaWindowContext.h
+    src/scene/Scene.cpp
 )
 
 add_executable(stylize-animation ${sources}) # ${includes}
@@ -93,6 +96,11 @@ endif()
 if (${ENABLE_IMGUI})
     include(${CMAKE_DIR}/LinkImGui.cmake)
     LinkImGui(stylize-animation PRIVATE)
+endif()
+
+if (${ENABLE_CNPY})
+  include(${CMAKE_DIR}/LinkCNPY.cmake)
+  LinkCNPY(stylize-animation PRIVATE)
 endif()
 
 include(${CMAKE_DIR}/LinkGLM.cmake)

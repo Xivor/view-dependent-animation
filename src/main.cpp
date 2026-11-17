@@ -13,6 +13,7 @@
 #include "core/MegaWindowContext.h"
 #include "renderer/AnimatedMesh.h"
 #include "renderer/SmearMesh.h"
+#include "renderer/RiggedMesh.h"
 #include "scene/Scene.h"
 #include "scene/CameraController.h"
 #include "scene/Cinematic.h"
@@ -108,15 +109,19 @@ int main(int argc, char *argv[]) {
   scene.objects.push_back(obj);
 
   // meshHandle = assets.add(std::make_unique<SmearMesh>("assets/meshes/tai lung melee with anim/tai lung melee with anim.fbx"));
-  meshHandle = assets.add(std::make_unique<SmearMesh>("assets/meshes/Tpose.fbx"));
+  std::string base_dir = "assets/RaBit/100/3d_model/";
+  meshHandle = assets.add(std::make_unique<RiggedMesh>(
+                            base_dir + "m.obj", base_dir + "3d_joints.txt", base_dir + "beta.npy",
+      base_dir + "pose.npy")
+  );
   sk = assets.get(meshHandle)->shaderKeysMap();
-  sk[PassTag::Hybrid] = ShaderKey{"hybrid_smear.vert", "hybrid_toon_shading.frag"};
+  // sk[PassTag::Hybrid] = ShaderKey{"hybrid_smear.vert", "hybrid_toon_shading.frag"};
 
   Object o = Object{sk};
   o.meshHandle       = meshHandle;
   o.material.color   = {0.85f, 0.7f, 0.55f};
-  o.transform.scale  = glm::vec3(0.01f);
-  o.transform.position = glm::vec3(0.f, 0.f, 0.f);
+  o.transform.scale  = glm::vec3(5.0f);
+  o.transform.position = glm::vec3(0.f, 2.f, 0.f);
   scene.objects.push_back(o);
   // {
   //   constexpr int   GRID    = 3;//5
