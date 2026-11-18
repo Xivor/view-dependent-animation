@@ -1,8 +1,8 @@
 #include "CameraRecoveryEngine.h"
+#include <iostream>
 #include <glm/ext/matrix_transform.hpp>
 #include <cmath>
 #include <numeric>
-#include <Eigen/Dense>
 
 
 template <typename T> T average(std::vector<T> v) {
@@ -51,7 +51,7 @@ CameraRecoveryEngine::CameraRecoveryEngine() {}
 
 CameraRecoveryEngine::~CameraRecoveryEngine() {}
 
-glm::mat3x4 CameraRecoveryEngine::RecoverCamera(const std::vector<glm::vec2> imagePoints, const std::vector<glm::vec3> modelPoints) {
+Eigen::Matrix<double, 3, 4> CameraRecoveryEngine::RecoverCamera(const std::vector<glm::vec2> imagePoints, const std::vector<glm::vec3> modelPoints) {
   // 1. normalize 2d and 3d points
   glm::vec2 centroid2d = average(imagePoints);
   std::vector<glm::vec2> normImagePoints;
@@ -99,11 +99,42 @@ glm::mat3x4 CameraRecoveryEngine::RecoverCamera(const std::vector<glm::vec2> ima
 
   // 4. P = T^-1P'U
   Eigen::Matrix<double, 3, 4> P = T2d_inv * P_transformed * T3d;
-  glm::mat3x4 P_glm;
-  for (int i = 0; i < 4; ++i) {
-    for (int j = 0; j < 3; ++j) {
-      P_glm[i][j] = static_cast<float>(P(j, i));
-    }
+  // glm::mat3x4 P_glm;
+  // for (int col = 0; col < 3; ++col) {
+  //   for (int row = 0; row < 4; ++row) {
+  //     P_glm[col][row] = static_cast<float>(P(row, col));
+  //   }
+  // }
+  // DEBUG
+  double squaredError = 0.0;
+
+  for (size_t i = 0; i < modelPoints.size(); ++i) {
+    Eigen::Vector4d X(
+      modelPoints[i].x,
+      modelPoints[i].y,
+      modelPoints[i].z,
+      1.0
+    );
+
+    Eigen::Vector3d projected = P * X;
+
+    if (std::abs(projected(2)) < 1e-10)
+      continue;
+
+    double x = projected(0) / projected(2);
+    double y = projected(1) / projected(2);
+
+    double dx = x - imagePoints[i].x;
+    double dy = y - imagePoints[i].y;
+
+    squaredError += dx * dx + dy * dy;
   }
-  return P_glm;
+
+  double rmse = std::sqrt(
+    squaredError / modelPoints.size()
+  );
+
+  std::cout << "Reprojection RMSE: " << rmse << " pixels\n";
+
+  return P;
 }
