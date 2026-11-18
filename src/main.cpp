@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <glad/glad.h>
 #include <cxxopts.hpp>
 #include <GLFW/glfw3.h>
@@ -6,6 +7,7 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
 #include <streambuf>
+#include <Eigen/Dense>
 
 #include "core/Log.h"
 #include "core/Window.h"
@@ -23,6 +25,7 @@
 #include "ui/DebugConsole.h"
 #include "ui/RenderStats.h"
 #include "ui/SelectionManager.h"
+#include "view-dependent-deformations/CameraRecoveryEngine.h"
 
 static void setupGLDebugCallback() {
   glEnable(GL_DEBUG_OUTPUT);
@@ -139,6 +142,52 @@ int main(int argc, char *argv[]) {
   //   }
   // }
 
+  // TEST with hardcoded model / image
+  CameraRecoveryEngine camRecEngine;
+  std::vector<glm::mat4> modelJointTransforms = dynamic_cast<RiggedMesh*>(assets.get(meshHandle))->m_joint_transforms; // HACK changing the type of mesh breaks this
+
+  // 2d points
+  std::map<int, glm::vec2> imageById;
+  std::string path = "assets/RaBit/100/2d_drawing/2d_joints.txt";
+  std::ifstream file(path);
+  if (!file.is_open()) {
+    Log::error("failed to open joints file " + path);
+  }
+  std::string line;
+  while(std::getline(file, line)) {
+    std::stringstream ss(line);
+    int index;
+    float x, y;
+    int status;
+    if (!(ss >> index >> x >> y >> status)) {
+      continue;
+    }
+    if (status == -1) continue;
+    imageById[index] = glm::vec2(x, y);
+  }
+
+  std::vector<glm::vec3> modelJoints;
+  std::vector<glm::vec2> imageJoints;
+  for (const auto& [id, imagePoint] : imageById) {
+    if (id < 0 ||
+        id >= static_cast<int>(modelJointTransforms.size())) {
+      continue;
+    }
+    glm::vec3 modelPoint =
+      glm::vec3(modelJointTransforms[id][3]);
+
+    modelJoints.push_back(modelPoint);
+    imageJoints.push_back(imagePoint);
+
+    std::cout << "Matching 3D joint " << id
+              << " with 2D joint " << id << std::endl;
+  }
+
+  Eigen::Matrix<double, 3, 4> camMatrix = camRecEngine.RecoverCamera(imageJoints, modelJoints);
+  Eigen::JacobiSVD<Eigen::Matrix<double, 3, 4>> svd(camMatrix, Eigen::ComputeFullV);
+  Eigen::Vector4d C = svd.matrixV().col(3);
+  glm::vec3 cameraPositionLocal = glm::vec3(C(0), C(1), C(2)) / static_cast<float>(C(3));
+
   Light light;
 
   light.position  = {0.f, 50.f, -150.f};
@@ -147,9 +196,23 @@ int main(int argc, char *argv[]) {
   scene.lights.push_back(light);
 
   //camera
-  scene.main_camera.position = {0.f, 1.f, 5.f};
-  scene.main_camera.target   = {0.f, 0.f, 0.f};
+  // scene.main_camera.position = {0.f, 1.f, 5.f};
+  // scene.main_camera.target   = {0.f, 0.f, 0.f};
 
+  // TEST
+  glm::vec4 rootLocalPos = modelJointTransforms[0][3];
+  glm::mat4 modelMatrix = glm::translate(glm::mat4(1.0f), o.transform.position)
+    * glm::mat4_cast(o.transform.rotation)
+    * glm::scale(glm::mat4(1.0f), o.transform.scale);
+  glm::vec3 T = glm::vec3(modelMatrix * rootLocalPos);
+  glm::vec3 cameraPositionGlobal = glm::vec3(modelMatrix * glm::vec4(cameraPositionLocal, 1.0f));
+  scene.main_camera.position = cameraPositionGlobal;
+  scene.main_camera.target = glm::normalize(T - cameraPositionGlobal);
+
+  // TODO use the found intrinsics in the camera parameters as well
+
+  std::cout << "found camera position: " << glm::to_string(cameraPositionGlobal) << std::endl;
+  std::cout << "found camera direction: " << glm::to_string(scene.main_camera.target) << std::endl;
 
   //cinematic
   Cinematic cinematic;

@@ -14,7 +14,7 @@ class RiggedMesh : public Mesh {
     void uploadUniforms(const Shader& shader, const RenderContext& ctx) const override;
     void calculateJointsGlobalTransforms(std::vector<glm::mat4>& transforms, glm::mat4 &parentTransform, int jointIdx) const;
     void draw() const override;
-    void drawMeshUI() override;
+    void drawMeshUI(int selectedJointId) override;
 
     std::vector<glm::mat4> m_joint_transforms =
         {}; // TODO replace all uses of m_joints_world_pos for this variable, as
