@@ -27,6 +27,8 @@
 #include "ui/SelectionManager.h"
 #include "view-dependent-deformations/CameraRecoveryEngine.h"
 
+using namespace std;
+
 static void setupGLDebugCallback() {
   glEnable(GL_DEBUG_OUTPUT);
      glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
@@ -39,6 +41,7 @@ static void setupGLDebugCallback() {
        Log::warn(std::string("GL: ") + message);
      }, nullptr);
 }
+
 
 
 int main(int argc, char *argv[]) {
@@ -111,16 +114,27 @@ int main(int argc, char *argv[]) {
   obj.transform.scale = glm::vec3(100.f);
   scene.objects.push_back(obj);
 
-  // meshHandle = assets.add(std::make_unique<SmearMesh>("assets/meshes/tai lung melee with anim/tai lung melee with anim.fbx"));
+  // add animated tai lung
+  meshHandle = assets.add(std::make_unique<SmearMesh>("assets/meshes/tai lung melee with anim/tai lung melee with anim.fbx"));
+  sk = assets.get(meshHandle)->shaderKeysMap();
+  // sk[PassTag::Hybrid] = ShaderKey{"hybrid_smear.vert", "hybrid_toon_shading.frag"};
+
+  Object o = Object{sk};
+  o.meshHandle       = meshHandle;
+  o.material.color   = {0.85f, 0.7f, 0.55f};
+  o.transform.scale  = glm::vec3(.02f);
+  o.transform.position = glm::vec3(3.f, 2.f, 0.f);
+  scene.objects.push_back(o);
+
+  // add static mouse mesh
   std::string base_dir = "assets/RaBit/100/3d_model/";
   meshHandle = assets.add(std::make_unique<RiggedMesh>(
                             base_dir + "m.obj", base_dir + "3d_joints.txt", base_dir + "beta.npy",
       base_dir + "pose.npy")
   );
   sk = assets.get(meshHandle)->shaderKeysMap();
-  // sk[PassTag::Hybrid] = ShaderKey{"hybrid_smear.vert", "hybrid_toon_shading.frag"};
 
-  Object o = Object{sk};
+  o = Object{sk};
   o.meshHandle       = meshHandle;
   o.material.color   = {0.85f, 0.7f, 0.55f};
   o.transform.scale  = glm::vec3(5.0f);
@@ -143,50 +157,139 @@ int main(int argc, char *argv[]) {
   // }
 
   // TEST with hardcoded model / image
-  CameraRecoveryEngine camRecEngine;
-  std::vector<glm::mat4> modelJointTransforms = dynamic_cast<RiggedMesh*>(assets.get(meshHandle))->m_joint_transforms; // HACK changing the type of mesh breaks this
+  // works only for RiggedMesh
+  RiggedMesh *r;
+  if ((r = dynamic_cast<RiggedMesh*>(assets.get(meshHandle))) != nullptr) {
+    CameraRecoveryEngine camRecEngine;
+    std::vector<glm::mat4> modelJointTransforms = dynamic_cast<RiggedMesh*>(assets.get(meshHandle))->m_joint_transforms; // HACK changing the type of mesh breaks this
 
-  // 2d points
-  std::map<int, glm::vec2> imageById;
-  std::string path = "assets/RaBit/100/2d_drawing/2d_joints.txt";
-  std::ifstream file(path);
-  if (!file.is_open()) {
-    Log::error("failed to open joints file " + path);
-  }
-  std::string line;
-  while(std::getline(file, line)) {
-    std::stringstream ss(line);
-    int index;
-    float x, y;
-    int status;
-    if (!(ss >> index >> x >> y >> status)) {
-      continue;
+    // 2d points
+    std::map<int, glm::vec2> imageById;
+    std::string path = "assets/RaBit/100/2d_drawing/2d_joints.txt";
+    std::ifstream file(path);
+    if (!file.is_open()) {
+      Log::error("failed to open joints file " + path);
     }
-    if (status == -1) continue;
-    imageById[index] = glm::vec2(x, y);
-  }
-
-  std::vector<glm::vec3> modelJoints;
-  std::vector<glm::vec2> imageJoints;
-  for (const auto& [id, imagePoint] : imageById) {
-    if (id < 0 ||
-        id >= static_cast<int>(modelJointTransforms.size())) {
-      continue;
+    std::string line;
+    while(std::getline(file, line)) {
+      std::stringstream ss(line);
+      int index;
+      float x, y;
+      int status;
+      if (!(ss >> index >> x >> y >> status)) {
+        continue;
+      }
+      if (status == -1) continue;
+      imageById[index] = glm::vec2(x, y);
     }
-    glm::vec3 modelPoint =
-      glm::vec3(modelJointTransforms[id][3]);
 
-    modelJoints.push_back(modelPoint);
-    imageJoints.push_back(imagePoint);
+    std::vector<glm::vec3> modelJoints;
+    std::vector<glm::vec2> imageJoints;
+    for (const auto& [id, imagePoint] : imageById) {
+      if (id < 0 ||
+          id >= static_cast<int>(modelJointTransforms.size())) {
+        continue;
+      }
+      glm::vec3 modelPoint =
+        glm::vec3(modelJointTransforms[id][3]);
 
-    std::cout << "Matching 3D joint " << id
-              << " with 2D joint " << id << std::endl;
+      modelJoints.push_back(modelPoint);
+      imageJoints.push_back(imagePoint);
+
+      std::cout << "Matching 3D joint " << id
+                << " with 2D joint " << id << std::endl;
+    }
+
+    vector<pair<int, int>> match = {
+        {1, 1},
+        {2, 2},
+        {3, 3},
+        // {4, 17},
+        {5, 18},
+        // {6, 19},
+        {7, 20},
+        {8, 21},
+        {9, 9},
+        {10, 10},
+        // {11, 13},
+        // {12, 14},
+        // {13, 11},
+        // {14, 12},
+        {22, 15},
+        {23, 16},
+        {15, 22},
+        {16, 23},
+        // {17, 4},
+        {18, 5},
+        // {19, 6},
+        {20, 7},
+        {21, 8},
+  }; // which IDs mesh / image to match
+
+    vector<glm::vec3> selectedModelJoints;
+    vector<glm::vec2> selectedImageJoints;
+    for (const auto& [meshId, imageId] : match) {
+      if (meshId < 0 || meshId >= static_cast<int>(modelJointTransforms.size())) {
+        std::cerr << "Invalid 3D joint ID: "
+                  << meshId << std::endl;
+        continue;
+      }
+      auto it = imageById.find(imageId);
+      if (it == imageById.end()) {
+        std::cerr << "Missing 2D joint ID: "
+                  << imageId << std::endl;
+        continue;
+      }
+      glm::vec3 modelPoint = glm::vec3(modelJointTransforms[meshId][3]);
+      glm::vec2 imagePoint = it->second;
+
+      selectedModelJoints.push_back(modelPoint);
+      selectedImageJoints.push_back(imagePoint);
+
+      std::cout
+        << "3D joint " << meshId
+        << " (" << glm::to_string(modelPoint) << ")"
+        << " -> 2D joint " << imageId
+        << " (" << glm::to_string(imagePoint) << ")"
+        << std::endl;
+    }
+
+    if (selectedModelJoints.size() < 6)
+    {
+      throw std::runtime_error(
+        "Not enough valid correspondences for DLT"
+      );
+    }
+
+    std::cout << "Total correspondences: "
+              << selectedModelJoints.size() << std::endl;
+
+    Eigen::Matrix<double, 3, 4> camMatrix = camRecEngine.RecoverCamera(selectedImageJoints, selectedModelJoints);
+    Eigen::JacobiSVD<Eigen::Matrix<double, 3, 4>> svd(camMatrix, Eigen::ComputeFullV);
+    Eigen::Vector4d C = svd.matrixV().col(3);
+    glm::vec3 cameraPositionLocal = glm::vec3(C(0), C(1), C(2)) / static_cast<float>(C(3));
+
+    glm::vec4 rootLocalPos = modelJointTransforms[0][3];
+    glm::mat4 modelMatrix = glm::translate(glm::mat4(1.0f), o.transform.position)
+      * glm::mat4_cast(o.transform.rotation)
+      * glm::scale(glm::mat4(1.0f), o.transform.scale);
+    glm::vec3 T = glm::vec3(modelMatrix * rootLocalPos);
+    glm::vec3 cameraPositionGlobal = glm::vec3(modelMatrix * glm::vec4(cameraPositionLocal, 1.0f));
+    scene.main_camera.position = cameraPositionGlobal;
+    // scene.main_camera.target = glm::normalize(T - cameraPositionGlobal);
+    scene.main_camera.target = glm::normalize(T);
+
+    // TODO use the found intrinsics in the camera parameters as well
+
+    std::cout << "found camera position: " << glm::to_string(cameraPositionGlobal) << std::endl;
+    std::cout << "found camera direction: " << glm::to_string(scene.main_camera.target) << std::endl;
   }
 
-  Eigen::Matrix<double, 3, 4> camMatrix = camRecEngine.RecoverCamera(imageJoints, modelJoints);
-  Eigen::JacobiSVD<Eigen::Matrix<double, 3, 4>> svd(camMatrix, Eigen::ComputeFullV);
-  Eigen::Vector4d C = svd.matrixV().col(3);
-  glm::vec3 cameraPositionLocal = glm::vec3(C(0), C(1), C(2)) / static_cast<float>(C(3));
+  else {
+    //camera
+    scene.main_camera.position = {0.f, 1.f, 5.f};
+    scene.main_camera.target   = {0.f, 0.f, 0.f};
+  }
 
   Light light;
 
@@ -194,25 +297,6 @@ int main(int argc, char *argv[]) {
   light.color = {1.0,1.0,0};
   light.intensity = 1.f;
   scene.lights.push_back(light);
-
-  //camera
-  // scene.main_camera.position = {0.f, 1.f, 5.f};
-  // scene.main_camera.target   = {0.f, 0.f, 0.f};
-
-  // TEST
-  glm::vec4 rootLocalPos = modelJointTransforms[0][3];
-  glm::mat4 modelMatrix = glm::translate(glm::mat4(1.0f), o.transform.position)
-    * glm::mat4_cast(o.transform.rotation)
-    * glm::scale(glm::mat4(1.0f), o.transform.scale);
-  glm::vec3 T = glm::vec3(modelMatrix * rootLocalPos);
-  glm::vec3 cameraPositionGlobal = glm::vec3(modelMatrix * glm::vec4(cameraPositionLocal, 1.0f));
-  scene.main_camera.position = cameraPositionGlobal;
-  scene.main_camera.target = glm::normalize(T - cameraPositionGlobal);
-
-  // TODO use the found intrinsics in the camera parameters as well
-
-  std::cout << "found camera position: " << glm::to_string(cameraPositionGlobal) << std::endl;
-  std::cout << "found camera direction: " << glm::to_string(scene.main_camera.target) << std::endl;
 
   //cinematic
   Cinematic cinematic;

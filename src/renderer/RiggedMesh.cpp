@@ -9,6 +9,7 @@
 #include <assimp/Importer.hpp>
 #include <fstream>
 
+using namespace std;
 
 // ####################
 // ####################
@@ -66,26 +67,27 @@ void RiggedMesh::draw() const {
 }
 
 void RiggedMesh::drawMeshUI(int selectedJointId) {
-  if (!m_scene || m_scene->mNumAnimations == 0) {
-    ImGui::TextDisabled("No animations.");
+  if (m_bonesInfo.empty()) {
+    ImGui::TextDisabled("No joints.");
     return;
   }
-  // ImGui::Text("Joints");
-  // ImGui::Separator();
-  // for (int i = 0; i < m_bonesInfo.size(); i++) {
-  //   glm::vec3 jointGlobalPos = m_bonesInfo[i].finalTransformationMatrix[3];
-  //   std::string label = "Joint " + std::to_string(i) + ": " + glm::to_string(jointGlobalPos);
-  //   // ImGui::Text("Local Position: %.2f, %.2f, %.2f", jointLocalPos.x, jointLocalPos.y, jointLocalPos.z);
-  //   // ImGui::Text("Global Position: %.2f, %.2f, %.2f", jointGlobalPos.x, jointGlobalPos.y, jointGlobalPos.z);
-  //   bool selected = (selectedJointId == i);
-  //   if (selected) {
-  //     ImGui::TextColored(ImVec4(0.0, 1.0, 0.0, 1.0), "%s (Selected)", label.c_str());
-  //     // ImGui::Indent();
-  //     // ImGui::Unindent();
-  //   } else {
-  //     ImGui::Text("%s", label.c_str());
-  //   }
-  // }
+  ImGui::Text("Joints");
+  ImGui::Separator();
+  for (int i = 0; i < m_bonesInfo.size(); ++i) {
+    glm::vec3 jointPos = glm::vec3(m_joint_transforms[i][3]);
+    std::string label = "Joint " + std::to_string(i) + ": " + glm::to_string(jointPos);
+    bool selected = (selectedJointId == i);
+    if (selected) {
+      ImGui::TextColored(
+        ImVec4(0.0f, 1.0f, 0.0f, 1.0f),
+        "%s (Selected)",
+        label.c_str()
+      );
+    }
+    else {
+      ImGui::Text("%s", label.c_str());
+    }
+  }
 }
 
 void RiggedMesh::calculateJointsGlobalTransforms(std::vector<glm::mat4> &transforms, glm::mat4 &parentTransform, int jointIdx) const {
