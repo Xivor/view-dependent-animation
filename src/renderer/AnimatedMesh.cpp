@@ -497,23 +497,23 @@ void AnimatedMesh::drawMeshUI(int selectedJointId) {
         if (selected) ImGui::SetItemDefaultFocus();
     }
 
-    // ImGui::Text("Joints");
-    // ImGui::Separator();
-    // std::vector<glm::mat4> transforms;
-    // getBoneTransforms(transforms);
-    // for (int i = 0; i < transforms.size(); i++) {
-    //   glm::vec3 jointLocalPos = glm::vec3(transforms[i][3]);
-    //   glm::vec3 jointGlobalPos = m_bonesInfo[i].finalTransformationMatrix[3];
-    //   std::string label = "Joint " + std::to_string(i) + ": " + glm::to_string(jointGlobalPos);
-    //   // ImGui::Text("Local Position: %.2f, %.2f, %.2f", jointLocalPos.x, jointLocalPos.y, jointLocalPos.z);
-    //   // ImGui::Text("Global Position: %.2f, %.2f, %.2f", jointGlobalPos.x, jointGlobalPos.y, jointGlobalPos.z);
-    //   bool selected = (selectedJointId == i);
-    //   if (selected) {
-    //     ImGui::TextColored(ImVec4(0.0, 1.0, 0.0, 1.0), "%s (Selected)", label.c_str());
-    //     // ImGui::Indent();
-    //     // ImGui::Unindent();
-    //   } else {
-    //     ImGui::Text("%s", label.c_str());
-    //   }
-    // }
+    ImGui::Text("Joints");
+    ImGui::Separator();
+    std::vector<glm::mat4> transforms;
+    getBoneTransforms(transforms);
+    for (int i = 0; i < transforms.size(); i++) {
+      glm::vec3 jointLocalPos = glm::vec3(transforms[i][3]);
+      glm::vec3 jointGlobalPos = m_bonesInfo[i].finalTransformationMatrix[3];
+      std::string label = "Joint " + std::to_string(i) + ": " + glm::to_string(jointGlobalPos);
+      // ImGui::Text("Local Position: %.2f, %.2f, %.2f", jointLocalPos.x, jointLocalPos.y, jointLocalPos.z);
+      // ImGui::Text("Global Position: %.2f, %.2f, %.2f", jointGlobalPos.x, jointGlobalPos.y, jointGlobalPos.z);
+      bool selected = (selectedJointId == i);
+      if (selected) {
+        ImGui::TextColored(ImVec4(0.0, 1.0, 0.0, 1.0), "%s (Selected)", label.c_str());
+        // ImGui::Indent();
+        // ImGui::Unindent();
+      } else {
+        ImGui::Text("%s", label.c_str());
+      }
+    }
 }
