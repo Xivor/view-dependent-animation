@@ -37,6 +37,7 @@ static void setupGLDebugCallback() {
      }, nullptr);
 }
 
+RiggedMesh* test_mesh;
 
 int main(int argc, char *argv[]) {
   // TODO direct some of the output to a file
@@ -89,24 +90,24 @@ int main(int argc, char *argv[]) {
   // creating the skybox
   staticMeshData = Geometry::makeCube();
   meshHandle = assets.add(std::make_unique<StaticMesh>(staticMeshData.vertices, staticMeshData.indices));
-  sk[PassTag::Hybrid] = ShaderKey{"static_mesh.vert", "hybrid_skybox.frag"};
+  sk[PassTag::Hybrid] = ShaderKey{"static_mesh.vert", "skybox_black.frag"};
   Object sb = Object{sk};
   sb.meshHandle = meshHandle;
   scene.m_skybox = &sb;
 
-  ShaderKey debugBoneShaderKey = ShaderKey{ "debug_bone.vert", "debug_bone.frag"};
-  ShaderManager::load(debugBoneShaderKey);
+  // ShaderKey debugBoneShaderKey = ShaderKey{ "debug_bone.vert", "debug_bone.frag"};
+  // ShaderManager::load(debugBoneShaderKey);
   ShaderKey jointShaderKey = ShaderKey{ "joint_hybrid.vert", "joint_hybrid.frag"};
   ShaderManager::load(jointShaderKey);
 
-  staticMeshData = Geometry::makePlane();
-  meshHandle = assets.add(std::make_unique<StaticMesh>(staticMeshData.vertices, staticMeshData.indices));
-  sk[PassTag::Hybrid] = ShaderKey{"static_mesh.vert","final_chessboard_mesh.frag"};
-  Object obj = Object{sk};
-  obj.meshHandle =meshHandle;
-  obj.material.color = {0.8f, 0.3f, 0.2f};
-  obj.transform.scale = glm::vec3(100.f);
-  scene.objects.push_back(obj);
+  // staticMeshData = Geometry::makePlane();
+  // meshHandle = assets.add(std::make_unique<StaticMesh>(staticMeshData.vertices, staticMeshData.indices));
+  // sk[PassTag::Hybrid] = ShaderKey{"static_mesh.vert","final_chessboard_mesh.frag"};
+  // Object obj = Object{sk};
+  // obj.meshHandle =meshHandle;
+  // obj.material.color = {0.8f, 0.3f, 0.2f};
+  // obj.transform.scale = glm::vec3(100.f);
+  // scene.objects.push_back(obj);
 
   // meshHandle = assets.add(std::make_unique<SmearMesh>("assets/meshes/tai lung melee with anim/tai lung melee with anim.fbx"));
   std::string base_dir = "assets/RaBit/100/3d_model/";
@@ -116,6 +117,11 @@ int main(int argc, char *argv[]) {
   );
   sk = assets.get(meshHandle)->shaderKeysMap();
   // sk[PassTag::Hybrid] = ShaderKey{"hybrid_smear.vert", "hybrid_toon_shading.frag"};
+
+  test_mesh = dynamic_cast<RiggedMesh*>(assets.get(meshHandle));
+  test_mesh->old_positions = {glm::vec3(0.f), glm::vec3(0.05f, 0.1f, 0.05f)};
+  test_mesh->new_positions = {glm::vec3(0.f, 0.f, 0.05f), glm::vec3(0.06f, 0.11f, 0.06f)};
+
 
   Object o = Object{sk};
   o.meshHandle       = meshHandle;
@@ -245,6 +251,7 @@ int main(int argc, char *argv[]) {
   bool prevF2 = false;
   bool prevF3 = false;
   bool prevF4 = false;
+  bool prevF6 = false;
 
   // Record animation
   int vid_w = 1280;
@@ -318,6 +325,17 @@ int main(int argc, char *argv[]) {
     bool f4 = glfwGetKey(window.handle(), GLFW_KEY_F4) == GLFW_PRESS;
     if (f4 && !prevF4) showUI = !showUI;
     prevF4 = f4;
+
+    // F5 - test vertex change
+    bool f5 = glfwGetKey(window.handle(), GLFW_KEY_F5) == GLFW_PRESS;
+    if (f5) {
+      test_mesh->test_vertex_change();
+    }
+
+    // F6 - toggle wireframe (applied by the Renderer, only to the scene meshes)
+    bool f6 = glfwGetKey(window.handle(), GLFW_KEY_F6) == GLFW_PRESS;
+    if (f6 && !prevF6) renderer.wireframe = !renderer.wireframe;
+    prevF6 = f6;
 
     // ZQSD camera movement
     camCtrl.update(scene.main_camera, window.handle(), dt);

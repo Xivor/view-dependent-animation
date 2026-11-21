@@ -90,6 +90,9 @@ void Renderer::render(Scene* scene,Window* window, Cinematic* cinematic, const A
         glEnable(GL_DEPTH_TEST);
     }
     // render the rest of the meshes
+    // Polygon mode is global GL state: set it only around the scene meshes, so the skybox and the
+    // full-screen quads of the post-processing passes are always drawn filled.
+    glPolygonMode(GL_FRONT_AND_BACK, wireframe ? GL_LINE : GL_FILL);
     for (unsigned int i = 0; i < scene->objects.size(); i++) {
         auto obj = scene->objects[i];
         auto it = obj.passTagShaderHandle.find(PassTag::Hybrid);
@@ -120,6 +123,7 @@ void Renderer::render(Scene* scene,Window* window, Cinematic* cinematic, const A
         mesh->draw();
         ++m_drawCalls;
     }
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
     // draw joints
     ShaderHandle jointShaderHandle = ShaderManager::getShaderHandleWithKey(ShaderKey{"joint_hybrid.vert", "joint_hybrid.frag"});
@@ -163,6 +167,24 @@ void Renderer::render(Scene* scene,Window* window, Cinematic* cinematic, const A
             glm::vec3 jointLocalPos = glm::vec3(transform[3]);
             glm::vec3 jointWorldPos = glm::vec3(objModelMatrix * glm::vec4(jointLocalPos, 1.0f));
             glm::mat4 model = glm::translate(glm::mat4(1.0f), jointWorldPos);
+            jointShader.set("model", model);
+            jointShader.set("jointId", static_cast<unsigned int>(j));
+            glDrawArrays(GL_POINTS, 0, 1);
+          }
+          for(int j = 0; j < riggedMesh->old_positions.size(); ++j) {
+            glm::vec3 jointLocalPos = riggedMesh->old_positions[j];
+            glm::vec3 jointWorldPos = glm::vec3(objModelMatrix * glm::vec4(jointLocalPos, 1.0f));
+            glm::mat4 model = glm::translate(glm::mat4(1.0f), jointWorldPos);
+            jointShader.set("jointColor", glm::vec3(0.0f, 0.0f, 1.0f));
+            jointShader.set("model", model);
+            jointShader.set("jointId", static_cast<unsigned int>(j));
+            glDrawArrays(GL_POINTS, 0, 1);
+          }
+          for(int j = 0; j < riggedMesh->new_positions.size(); ++j) {
+            glm::vec3 jointLocalPos = riggedMesh->new_positions[j];
+            glm::vec3 jointWorldPos = glm::vec3(objModelMatrix * glm::vec4(jointLocalPos, 1.0f));
+            glm::mat4 model = glm::translate(glm::mat4(1.0f), jointWorldPos);
+            jointShader.set("jointColor", glm::vec3(1.0f, 0.0f, 0.0f));
             jointShader.set("model", model);
             jointShader.set("jointId", static_cast<unsigned int>(j));
             glDrawArrays(GL_POINTS, 0, 1);

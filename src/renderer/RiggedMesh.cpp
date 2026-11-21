@@ -22,7 +22,7 @@ RiggedMesh::RiggedMesh(const std::string &objPath, const std::string &jointsPath
             aiProcess_Triangulate           |
             aiProcess_JoinIdenticalVertices |
             aiProcess_SortByPType           |
-            aiProcess_GenNormals);
+            aiProcess_GenSmoothNormals);
 
     if (!m_scene || !m_scene->HasMeshes()) {
         Log::error("no meshes found in path: " + objPath);
@@ -65,7 +65,7 @@ void RiggedMesh::draw() const {
   glDrawElements(GL_TRIANGLES, m_indexCount, GL_UNSIGNED_INT, nullptr);
 }
 
-void RiggedMesh::drawMeshUI() {
+void RiggedMesh::drawMeshUI(int selectedJointId) {
   if (!m_scene || m_scene->mNumAnimations == 0) {
     ImGui::TextDisabled("No animations.");
     return;

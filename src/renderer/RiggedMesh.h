@@ -14,7 +14,7 @@ class RiggedMesh : public Mesh {
     void uploadUniforms(const Shader& shader, const RenderContext& ctx) const override;
     void calculateJointsGlobalTransforms(std::vector<glm::mat4>& transforms, glm::mat4 &parentTransform, int jointIdx) const;
     void draw() const override;
-    void drawMeshUI() override;
+    void drawMeshUI(int selectedJointId) override;
 
     std::vector<glm::mat4> m_joint_transforms =
         {}; // TODO replace all uses of m_joints_world_pos for this variable, as
@@ -23,7 +23,29 @@ class RiggedMesh : public Mesh {
             // for m_bonesInfo? -> my theory is that actually offsetMatrix is
             // just a translation for the bone (local space), and m_joint_transforms may be the final world transformation
 
-  protected:
+    void test_vertex_change() {
+      for (int i = 0; i < m_vertices.size(); ++i) {
+        glm::vec3 p0 = m_vertices[i].position;
+        int p_idx = -1;
+        float min_dist = std::numeric_limits<float>::max();
+        for(int j = 0; j < old_positions.size(); ++j) {
+          float dist = glm::length(p0 - old_positions[j]);
+          if (dist < min_dist) {
+            min_dist = dist;
+            p_idx = j;
+          }
+        }
+        if (p_idx > -1){
+          m_vertices[i].position += std::exp(-std::pow(min_dist/0.05f, 2.0f)/2.0f) * (new_positions[p_idx] - old_positions[p_idx]);
+        }
+      }
+      glNamedBufferData(m_vbo, m_vertices.size() * sizeof(AnimatedVertex), m_vertices.data(), GL_STATIC_DRAW);
+    }
+
+    std::vector<glm::vec3> old_positions;
+    std::vector<glm::vec3> new_positions;
+
+    protected:
     const aiScene *m_scene = nullptr;
     Assimp::Importer m_importer;
     std::vector<AnimatedVertex> m_vertices = {};
@@ -50,7 +72,7 @@ class RiggedMesh : public Mesh {
     const std::map<PassTag, ShaderKey> shaderKeysMap() const override {
       // TODO see if animated_mesh.vert actually works for a non-animated rigged mesh
       // TODO using static_mesh.vert temporarily
-      std::map<PassTag, ShaderKey> key_map = {{PassTag::Hybrid, ShaderKey{"rigged_mesh.vert", "hybrid.frag"}}};
+      std::map<PassTag, ShaderKey> key_map = {{PassTag::Hybrid, ShaderKey{"rigged_mesh.vert", "unlit.frag"}}};
       return key_map;
     }
 };
