@@ -8,6 +8,9 @@
 #include <imgui_impl_opengl3.h>
 #include <streambuf>
 #include <Eigen/Dense>
+#include <cstdint>
+#include <cstdio>
+#include <vector>
 
 #include "core/Log.h"
 #include "core/Window.h"
@@ -42,7 +45,56 @@ static void setupGLDebugCallback() {
      }, nullptr);
 }
 
+static bool saveScreenshot(const std::string& path, int x, int y) {
+  constexpr int imageSize = 512;
+  std::vector<unsigned char> pixels(imageSize * imageSize * 3);
+  glPixelStorei(GL_PACK_ALIGNMENT, 1);
+  glReadBuffer(GL_BACK);
+  glReadPixels(x, y, imageSize, imageSize, GL_RGB, GL_UNSIGNED_BYTE, pixels.data());
+
+  const uint32_t rowSize = (imageSize * 3 + 3) & ~3u;
+  const uint32_t dataSize = rowSize * imageSize;
+  unsigned char header[54] = {'B', 'M'};
+  auto put32 = [&](int offset, uint32_t value) {
+    for (int i = 0; i < 4; ++i) header[offset + i] = (value >> (8 * i)) & 0xFF;
+  };
+  put32(2, 54 + dataSize);
+  put32(10, 54);
+  put32(14, 40);
+  put32(18, imageSize);
+  put32(22, imageSize);
+  header[26] = 1;
+  header[28] = 24;
+  put32(34, dataSize);
+
+  std::ofstream file(path, std::ios::binary);
+  if (!file) return false;
+  file.write(reinterpret_cast<const char*>(header), sizeof(header));
+  std::vector<unsigned char> row(rowSize, 0);
+  for (int rowIndex = 0; rowIndex < imageSize; ++rowIndex) {
+    for (int column = 0; column < imageSize; ++column) {
+      const size_t source = (static_cast<size_t>(rowIndex) * imageSize + column) * 3;
+      row[column * 3] = pixels[source + 2];
+      row[column * 3 + 1] = pixels[source + 1];
+      row[column * 3 + 2] = pixels[source];
+    }
+    file.write(reinterpret_cast<const char*>(row.data()), rowSize);
+  }
+  return static_cast<bool>(file);
+}
+
 RiggedMesh* test_mesh;
+glm::mat4 test_modelMatrix;
+
+void setMeshDeformPairs(RiggedMesh* riggedMesh, const glm::mat4& modelMatrix, const std::vector<std::pair<glm::vec3, glm::vec3>>& pairs) {
+  riggedMesh->deform_pairs.clear();
+  for (const auto& pair : pairs) {
+    glm::mat4 inverseModelMatrix = glm::inverse(modelMatrix);
+    glm::vec3 localPos1 = glm::vec3(inverseModelMatrix * glm::vec4(pair.first, 1.0f));
+    glm::vec3 localPos2 = glm::vec3(inverseModelMatrix * glm::vec4(pair.second, 1.0f));
+    riggedMesh->deform_pairs.emplace_back(localPos1, localPos2);
+  }
+}
 
 
 int main(int argc, char *argv[]) {
@@ -135,21 +187,21 @@ int main(int argc, char *argv[]) {
   );
   sk = assets.get(meshHandle)->shaderKeysMap();
 
-<<<<<<< HEAD
-  test_mesh = dynamic_cast<RiggedMesh*>(assets.get(meshHandle));
-  test_mesh->old_positions = {glm::vec3(0.f), glm::vec3(0.05f, 0.1f, 0.05f)};
-  test_mesh->new_positions = {glm::vec3(0.f, 0.f, 0.05f), glm::vec3(0.06f, 0.11f, 0.06f)};
-
-
-  Object o = Object{sk};
-=======
   o = Object{sk};
->>>>>>> origin/main
   o.meshHandle       = meshHandle;
   o.material.color   = {0.85f, 0.7f, 0.55f};
   o.transform.scale  = glm::vec3(5.0f);
   o.transform.position = glm::vec3(0.f, 2.f, 0.f);
   scene.objects.push_back(o);
+
+  test_mesh = dynamic_cast<RiggedMesh*>(assets.get(meshHandle));
+  test_mesh->deform_pairs = {
+    {glm::vec3(0.f), glm::vec3(0.f, 0.f, 0.05f)},
+    {glm::vec3(0.05f, 0.1f, 0.05f), glm::vec3(0.06f, 0.11f, 0.06f)}
+  };
+  test_modelMatrix = o.transform.matrix();
+
+
   // {
   //   constexpr int   GRID    = 3;//5
   //   constexpr float SPACING = 2.0f;
@@ -402,7 +454,13 @@ int main(int argc, char *argv[]) {
   bool prevF2 = false;
   bool prevF3 = false;
   bool prevF4 = false;
+  bool prevF5 = false;
   bool prevF6 = false;
+  bool prevP = false;
+  bool prevK = false;
+  bool screenshotRequested = false;
+  int screenshotCount = 0;
+  CameraImageProjection screenshotProjection;
 
   // Record animation
   int vid_w = 1280;
@@ -479,14 +537,25 @@ int main(int argc, char *argv[]) {
 
     // F5 - test vertex change
     bool f5 = glfwGetKey(window.handle(), GLFW_KEY_F5) == GLFW_PRESS;
-    if (f5) {
+    if (f5 && !prevF5) {
       test_mesh->test_vertex_change();
     }
+    prevF5 = f5;
 
     // F6 - toggle wireframe (applied by the Renderer, only to the scene meshes)
     bool f6 = glfwGetKey(window.handle(), GLFW_KEY_F6) == GLFW_PRESS;
     if (f6 && !prevF6) renderer.wireframe = !renderer.wireframe;
     prevF6 = f6;
+
+    // P - take screenshot (512x512) of the current frame
+    bool currP = glfwGetKey(window.handle(), GLFW_KEY_P) == GLFW_PRESS;
+    if (currP && !prevP) screenshotRequested = true;
+    prevP = currP;
+
+    // K - toggle keypoints (applied by the Renderer, only to the scene meshes)
+    bool currK = glfwGetKey(window.handle(), GLFW_KEY_K) == GLFW_PRESS;
+    if (currK && !prevK) renderer.showKeypoints = !renderer.showKeypoints;
+    prevK = currK;
 
     // ZQSD camera movement
     camCtrl.update(scene.main_camera, window.handle(), dt);
@@ -496,6 +565,42 @@ int main(int argc, char *argv[]) {
 
     float aspect = (h > 0) ? static_cast<float>(w) / static_cast<float>(h) : 1.f;
     renderer.render(&scene, &window, &cinematic, assets, aspect, dt);
+
+    if (screenshotRequested) {
+      constexpr int imageSize = 512;
+      if (w >= imageSize && h >= imageSize) {
+        const int cropX = (w - imageSize) / 2;
+        const int cropY = (h - imageSize) / 2;
+        screenshotProjection.viewMatrix = scene.main_camera.view();
+        screenshotProjection.projectionMatrix = scene.main_camera.projection(aspect);
+        screenshotProjection.framebufferSize = {w, h};
+        screenshotProjection.cropOrigin = {cropX, h - cropY - imageSize};
+        screenshotProjection.imageSize = {imageSize, imageSize};
+        screenshotProjection.target = scene.main_camera.target;
+        screenshotProjection.depthValues.resize(imageSize * imageSize);
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, renderer.renderPipeline()->getPassFbo("Hybrid Render Pass"));
+        glReadPixels(cropX, cropY, imageSize, imageSize, GL_DEPTH_COMPONENT, GL_FLOAT,
+               screenshotProjection.depthValues.data());
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+
+        char filename[64];
+        std::snprintf(filename, sizeof(filename), "screenshot_%03d.bmp", screenshotCount++);
+        if (saveScreenshot(filename, cropX, cropY)) {
+          Log::info(std::string("Saved 512x512 screenshot: ") + filename);
+        } else {
+          Log::error(std::string("Could not write screenshot: ") + filename);
+        }
+      } else {
+        Log::warn("Screenshot needs a framebuffer of at least 512x512 pixels");
+      }
+      screenshotRequested = false;
+      glm::vec3 originalPos = screenshotProjection.backToSpace(glm::vec2(100.f, 100.f));
+      glm::vec3 targetPos = screenshotProjection.closestProjection(glm::vec2(100.f, 110.f), originalPos);
+      std::vector<std::pair<glm::vec3, glm::vec3>> deformPairs = {
+        {originalPos, targetPos}
+      };
+      setMeshDeformPairs(test_mesh, test_modelMatrix, deformPairs);
+    }
 
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();

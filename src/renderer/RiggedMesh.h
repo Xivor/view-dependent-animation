@@ -28,22 +28,21 @@ class RiggedMesh : public Mesh {
         glm::vec3 p0 = m_vertices[i].position;
         int p_idx = -1;
         float min_dist = std::numeric_limits<float>::max();
-        for(int j = 0; j < old_positions.size(); ++j) {
-          float dist = glm::length(p0 - old_positions[j]);
+        for(int j = 0; j < deform_pairs.size(); ++j) {
+          float dist = glm::length(p0 - deform_pairs[j].first);
           if (dist < min_dist) {
             min_dist = dist;
             p_idx = j;
           }
         }
         if (p_idx > -1){
-          m_vertices[i].position += std::exp(-std::pow(min_dist/0.05f, 2.0f)/2.0f) * (new_positions[p_idx] - old_positions[p_idx]);
+          m_vertices[i].position += std::exp(-std::pow(min_dist/0.05f, 2.0f)/2.0f) * (deform_pairs[p_idx].second - deform_pairs[p_idx].first);
         }
       }
       glNamedBufferData(m_vbo, m_vertices.size() * sizeof(AnimatedVertex), m_vertices.data(), GL_STATIC_DRAW);
     }
 
-    std::vector<glm::vec3> old_positions;
-    std::vector<glm::vec3> new_positions;
+    std::vector<std::pair<glm::vec3, glm::vec3>> deform_pairs; // pairs of old and new positions for the mesh vertices
 
     protected:
     const aiScene *m_scene = nullptr;

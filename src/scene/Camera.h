@@ -4,6 +4,24 @@
  */
 #pragma once
 #include <glm/glm.hpp>
+#include <vector>
+
+struct CameraImageProjection {
+    glm::mat4 viewMatrix{1.f};
+    glm::mat4 projectionMatrix{1.f};
+    glm::ivec2 framebufferSize{0};
+    glm::ivec2 cropOrigin{0};
+    glm::ivec2 imageSize{512};
+    glm::vec3 target{0.f};
+    std::vector<float> depthValues;
+
+    /**
+     * @brief Unprojects a top-left-origin image pixel to its visible world-space surface point.
+     * @param pixel Pixel coordinates in the captured image, from (0, 0) to (511, 511).
+     */
+    glm::vec3 backToSpace(const glm::vec2& pixel) const;
+    glm::vec3 closestProjection(const glm::vec2& pixel, const glm::vec3& worldPoint) const;
+};
 
 /**
  * @brief A perspective camera defined by position, target, and field of view.

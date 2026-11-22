@@ -127,7 +127,7 @@ void Renderer::render(Scene* scene,Window* window, Cinematic* cinematic, const A
 
     // draw joints
     ShaderHandle jointShaderHandle = ShaderManager::getShaderHandleWithKey(ShaderKey{"joint_hybrid.vert", "joint_hybrid.frag"});
-    if (jointShaderHandle != 0) {
+    if (jointShaderHandle != 0 && showKeypoints) {
       const Shader& jointShader = ShaderManager::get(jointShaderHandle);
       jointShader.bind();
       jointShader.set("view", scene->main_camera.view());
@@ -171,22 +171,16 @@ void Renderer::render(Scene* scene,Window* window, Cinematic* cinematic, const A
             jointShader.set("jointId", static_cast<unsigned int>(j));
             glDrawArrays(GL_POINTS, 0, 1);
           }
-          for(int j = 0; j < riggedMesh->old_positions.size(); ++j) {
-            glm::vec3 jointLocalPos = riggedMesh->old_positions[j];
-            glm::vec3 jointWorldPos = glm::vec3(objModelMatrix * glm::vec4(jointLocalPos, 1.0f));
+          for(auto pair : riggedMesh->deform_pairs) {
+            glm::vec3 jointWorldPos = glm::vec3(objModelMatrix * glm::vec4(pair.first, 1.0f));
             glm::mat4 model = glm::translate(glm::mat4(1.0f), jointWorldPos);
             jointShader.set("jointColor", glm::vec3(0.0f, 0.0f, 1.0f));
             jointShader.set("model", model);
-            jointShader.set("jointId", static_cast<unsigned int>(j));
             glDrawArrays(GL_POINTS, 0, 1);
-          }
-          for(int j = 0; j < riggedMesh->new_positions.size(); ++j) {
-            glm::vec3 jointLocalPos = riggedMesh->new_positions[j];
-            glm::vec3 jointWorldPos = glm::vec3(objModelMatrix * glm::vec4(jointLocalPos, 1.0f));
-            glm::mat4 model = glm::translate(glm::mat4(1.0f), jointWorldPos);
+            glm::vec3 jointWorldPos2 = glm::vec3(objModelMatrix * glm::vec4(pair.second, 1.0f));
+            glm::mat4 model2 = glm::translate(glm::mat4(1.0f), jointWorldPos2);
             jointShader.set("jointColor", glm::vec3(1.0f, 0.0f, 0.0f));
-            jointShader.set("model", model);
-            jointShader.set("jointId", static_cast<unsigned int>(j));
+            jointShader.set("model", model2);
             glDrawArrays(GL_POINTS, 0, 1);
           }
         }

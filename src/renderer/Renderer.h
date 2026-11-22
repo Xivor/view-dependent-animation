@@ -46,6 +46,7 @@ public:
 
     bool useKuwahara = false;
     bool wireframe = false;   // draw the scene meshes as lines (toggled with F6 in main.cpp)
+    bool showKeypoints = false; // draw the keypoints of the scene meshes (toggled with K in main.cpp)
 
 private:
     const float max_time = 2.0; //toutes les deux secondes
