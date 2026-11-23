@@ -25,6 +25,7 @@
 #include "ui/DebugConsole.h"
 #include "ui/RenderStats.h"
 #include "ui/SelectionManager.h"
+#include "ui/CameraControls.h"
 #include "view-dependent-deformations/CameraRecoveryEngine.h"
 
 using namespace std;
@@ -307,6 +308,7 @@ int main(int argc, char *argv[]) {
   CameraController camCtrl;
   DebugConsole     console;
   RenderStats      stats;
+  CameraControls   camControls;
   SelectionManager selectionManager{&scene, renderer.renderPipeline(), &assets};
 
   // Compiling shaders
@@ -482,6 +484,7 @@ int main(int argc, char *argv[]) {
       selectionManager.draw();
       console.draw();
       stats.draw(window, renderer.drawCalls(), assets.meshCount(), fps, assets.get(meshHandle)->getCurrentFrame());
+      camControls.draw(window, renderer.drawCalls());
       ShaderManager::drawUI();
     }
     ImGui::Render();

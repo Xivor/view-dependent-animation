@@ -1,6 +1,7 @@
 #pragma once
 
 
+#include "ui/CameraControls.h"
 class CameraController;
 struct Scene;
 class SelectionManager;
