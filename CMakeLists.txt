@@ -64,6 +64,8 @@ set(sources
     ${SOURCE_DIR}/core/Timer.h
     ${SOURCE_DIR}/ui/SelectionManager.cpp
     ${SOURCE_DIR}/ui/SelectionManager.h
+    ${SOURCE_DIR}/ui/CameraControls.cpp
+    ${SOURCE_DIR}/ui/CameraControls.h
     ${SOURCE_DIR}/renderer/RenderPipeline.cpp
     ${SOURCE_DIR}/renderer/RenderPipeline.h
     ${SOURCE_DIR}/renderer/RiggedMesh.cpp
