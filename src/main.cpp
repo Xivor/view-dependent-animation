@@ -163,6 +163,9 @@ int main(int argc, char *argv[]) {
   if ((r = dynamic_cast<RiggedMesh*>(assets.get(meshHandle))) != nullptr) {
     CameraRecoveryEngine camRecEngine;
     std::vector<glm::mat4> modelJointTransforms = dynamic_cast<RiggedMesh*>(assets.get(meshHandle))->m_joint_transforms; // HACK changing the type of mesh breaks this
+    for (int i = 0; i < modelJointTransforms.size(); i++) {
+      modelJointTransforms[i] *= 0.5;
+    }
 
     // 2d points
     std::map<int, glm::vec2> imageById;
@@ -278,7 +281,8 @@ int main(int argc, char *argv[]) {
     glm::vec3 cameraPositionGlobal = glm::vec3(modelMatrix * glm::vec4(cameraPositionLocal, 1.0f));
     scene.main_camera.position = cameraPositionGlobal;
     // scene.main_camera.target = glm::normalize(T - cameraPositionGlobal);
-    scene.main_camera.target = glm::normalize(T);
+    // scene.main_camera.target = glm::normalize(T);
+    scene.main_camera.target = glm::vec3(modelMatrix * glm::vec4(selectedModelJoints[0], 1.0));
 
     // TODO use the found intrinsics in the camera parameters as well
 
