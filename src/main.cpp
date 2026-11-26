@@ -8,7 +8,9 @@
 #include <imgui_impl_opengl3.h>
 #include <streambuf>
 #include <Eigen/Dense>
+#include <Eigen/QR>
 
+#include "Eigen/src/Core/Matrix.h"
 #include "core/Log.h"
 #include "core/Window.h"
 #include "core/AssetManager.h"
@@ -106,14 +108,14 @@ int main(int argc, char *argv[]) {
   ShaderKey jointShaderKey = ShaderKey{ "joint_hybrid.vert", "joint_hybrid.frag"};
   ShaderManager::load(jointShaderKey);
 
-  staticMeshData = Geometry::makePlane();
-  meshHandle = assets.add(std::make_unique<StaticMesh>(staticMeshData.vertices, staticMeshData.indices));
-  sk[PassTag::Hybrid] = ShaderKey{"static_mesh.vert","final_chessboard_mesh.frag"};
-  Object obj = Object{sk};
-  obj.meshHandle =meshHandle;
-  obj.material.color = {0.8f, 0.3f, 0.2f};
-  obj.transform.scale = glm::vec3(100.f);
-  scene.objects.push_back(obj);
+  // staticMeshData = Geometry::makePlane();
+  // meshHandle = assets.add(std::make_unique<StaticMesh>(staticMeshData.vertices, staticMeshData.indices));
+  // sk[PassTag::Hybrid] = ShaderKey{"static_mesh.vert","final_chessboard_mesh.frag"};
+  // Object obj = Object{sk};
+  // obj.meshHandle =meshHandle;
+  // obj.material.color = {0.8f, 0.3f, 0.2f};
+  // obj.transform.scale = glm::vec3(100.f);
+  // scene.objects.push_back(obj);
 
   // add animated tai lung
   meshHandle = assets.add(std::make_unique<SmearMesh>("assets/meshes/tai lung melee with anim/tai lung melee with anim.fbx"));
@@ -163,9 +165,9 @@ int main(int argc, char *argv[]) {
   if ((r = dynamic_cast<RiggedMesh*>(assets.get(meshHandle))) != nullptr) {
     CameraRecoveryEngine camRecEngine;
     std::vector<glm::mat4> modelJointTransforms = dynamic_cast<RiggedMesh*>(assets.get(meshHandle))->m_joint_transforms; // HACK changing the type of mesh breaks this
-    for (int i = 0; i < modelJointTransforms.size(); i++) {
-      modelJointTransforms[i] *= 0.5;
-    }
+    // for (int i = 0; i < modelJointTransforms.size(); i++) {
+    //   modelJointTransforms[i] *= 2;
+    // }
 
     // 2d points
     std::map<int, glm::vec2> imageById;
@@ -267,8 +269,17 @@ int main(int argc, char *argv[]) {
 
     std::cout << "Total correspondences: "
               << selectedModelJoints.size() << std::endl;
-
-    Eigen::Matrix<double, 3, 4> camMatrix = camRecEngine.RecoverCamera(selectedImageJoints, selectedModelJoints);
+    std::vector<Bone> bones = {
+    {0, 1, 100},
+    {1, 2, 100},
+    {2, 6, 100},
+    {6, 7, 100},
+    {4, 5, 100},
+    {13, 14, 100},
+    {8, 9, 100},
+    {10, 11, 100}
+    };
+    Eigen::Matrix<double, 3, 4> camMatrix = camRecEngine.RecoverCamera(selectedImageJoints, selectedModelJoints, bones);
     Eigen::JacobiSVD<Eigen::Matrix<double, 3, 4>> svd(camMatrix, Eigen::ComputeFullV);
     Eigen::Vector4d C = svd.matrixV().col(3);
     glm::vec3 cameraPositionLocal = glm::vec3(C(0), C(1), C(2)) / static_cast<float>(C(3));
@@ -280,11 +291,53 @@ int main(int argc, char *argv[]) {
     glm::vec3 T = glm::vec3(modelMatrix * rootLocalPos);
     glm::vec3 cameraPositionGlobal = glm::vec3(modelMatrix * glm::vec4(cameraPositionLocal, 1.0f));
     scene.main_camera.position = cameraPositionGlobal;
-    // scene.main_camera.target = glm::normalize(T - cameraPositionGlobal);
-    // scene.main_camera.target = glm::normalize(T);
-    scene.main_camera.target = glm::vec3(modelMatrix * glm::vec4(selectedModelJoints[0], 1.0));
 
-    // TODO use the found intrinsics in the camera parameters as well
+    // Use QR decomposition to extract the rotation part from the camera matrix and find the view direction
+    Eigen::Matrix<double, 3, 4> P = camMatrix;
+    Eigen::Matrix3d M = P.leftCols<3>();
+    if (M.determinant() < 0.0) {
+      P *= -1.0;
+      M *= -1.0;
+    }
+    Eigen::Matrix3d J;
+    J << 0, 0, 1,
+      0, 1, 0,
+      1, 0, 0;
+    Eigen::Matrix3d B = J * M.transpose() * J;
+    Eigen::HouseholderQR<Eigen::Matrix3d> qr(B);
+    Eigen::Matrix3d Q = qr.householderQ();
+    Eigen::Matrix3d U =
+      qr.matrixQR().template triangularView<Eigen::Upper>();
+
+    // Eigen::Matrix3d K = J * U.transpose() * J; // intrinsics
+    Eigen::Matrix3d R = J * Q.transpose() * J; // camera rotation
+    Eigen::Matrix3d D = Eigen::Matrix3d::Identity(); // sign correction
+    // for (int i = 0; i < 3; ++i) {
+    //   if (K(i, i) < 0.0)
+    //     D(i, i) = -1.0;
+    // }
+    // K = K * D;
+    R = D * R;
+    // Eigen::Vector3d t =
+    //   K.triangularView<Eigen::Upper>().solve(P.col(3));
+    // double k33 = K(2, 2);
+    // K /= k33;
+
+    Eigen::Vector3d cameraForward(0., 0., 1.);
+    Eigen::Vector3d viewDirectionLocal = R.transpose() * cameraForward;
+    glm::vec3 viewDirectionLocalGlm(
+      static_cast<float>(viewDirectionLocal.x()),
+      static_cast<float>(viewDirectionLocal.y()),
+      static_cast<float>(viewDirectionLocal.z())
+    );
+    glm::vec3 viewDirectionGlobal = glm::normalize(glm::mat3(modelMatrix) * viewDirectionLocalGlm);
+    glm::vec3 cameraTargetGlobal = cameraPositionGlobal + viewDirectionGlobal;
+
+    scene.main_camera.position = cameraPositionGlobal;
+    scene.main_camera.target = cameraTargetGlobal;
+    // scene.main_camera.target = glm::normalize(T - cameraPositionGlobal);
+    scene.main_camera.target = glm::normalize(T);
+    // scene.main_camera.target = glm::vec3(modelMatrix * glm::vec4(selectedModelJoints[0], 1.0));
 
     std::cout << "found camera position: " << glm::to_string(cameraPositionGlobal) << std::endl;
     std::cout << "found camera direction: " << glm::to_string(scene.main_camera.target) << std::endl;

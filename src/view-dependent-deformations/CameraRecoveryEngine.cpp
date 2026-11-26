@@ -4,54 +4,113 @@
 #include <cmath>
 #include <numeric>
 
+Eigen::Vector2d toEigen(const glm::vec2& v) {
+    return Eigen::Vector2d(
+        static_cast<double>(v.x),
+        static_cast<double>(v.y)
+    );
+}
+
+Eigen::Vector3d toEigen(const glm::vec3& v) {
+    return Eigen::Vector3d(
+        static_cast<double>(v.x),
+        static_cast<double>(v.y),
+        static_cast<double>(v.z)
+    );
+}
 
 template <typename T> T average(std::vector<T> v) {
   if (v.empty()) return T{};
   return std::reduce(v.cbegin(), v.cend(), T{}) / static_cast<float>(v.size());
 }
 
+Eigen::Matrix<double, 3, 4> solveDLT(const std::vector<Eigen::Vector2d> normImagePoints, const std::vector<Eigen::Vector3d> normModelPoints, const std::vector<Bone> bones) {
+    const int n = static_cast<int>(normImagePoints.size());
+    std::vector<Eigen::Matrix<double, 1, 12>> boneRows;
+    for (const auto& bone : bones) {
 
-Eigen::Matrix<double, 3, 4> solveDLT(const std::vector<glm::vec2> normImagePoints, const std::vector<glm::vec3> normModelPoints) {
-  int n = normImagePoints.size();
-  Eigen::MatrixXd A(2 * n, 12);
-  A.setZero();
+        const int r = bone.r;
+        const int t = bone.t;
 
-  for (int i = 0; i < n; i++) {
-    double X = normModelPoints[i].x;
-    double Y = normModelPoints[i].y;
-    double Z = normModelPoints[i].z;
-    double x = normImagePoints[i].x;
-    double y = normImagePoints[i].y;
+        if (r < 0 || t < 0 ||
+            r >= n || t >= n) {
+            continue;
+        }
 
-    A(2 * i, 4) = -X;
-    A(2 * i, 5) = -Y;
-    A(2 * i, 6) = -Z;
-    A(2 * i, 7) = -1;
-    A(2 * i, 8) = y * X;
-    A(2 * i, 9) = y * Y;
-    A(2 * i, 10) = y * Z;
-    A(2 * i, 11) = y;
-    A(2 * i + 1, 0) = X;
-    A(2 * i + 1, 1) = Y;
-    A(2 * i + 1, 2) = Z;
-    A(2 * i + 1, 3) = 1;
-    A(2 * i + 1, 8) = -x * X;
-    A(2 * i + 1, 9) = -x * Y;
-    A(2 * i + 1, 10) = -x * Z;
-    A(2 * i + 1, 11) = -x;
-  }
-  Eigen::JacobiSVD<Eigen::MatrixXd> svd(A, Eigen::ComputeFullV);
-  Eigen::VectorXd h = svd.matrixV().col(11); // rightmost column is h
-  return Eigen::Map<const Eigen::Matrix<double, 3, 4, Eigen::RowMajor>>(h.data());
+        if (bone.w <= 0.0)
+            continue;
+        Eigen::Vector3d xr(
+            normImagePoints[r].x(),
+            normImagePoints[r].y(),
+            1.0
+        );
+
+        Eigen::Vector3d xt(
+            normImagePoints[t].x(),
+            normImagePoints[t].y(),
+            1.0
+        );
+        Eigen::Vector3d l = xr.cross(xt);
+        double lineNorm = std::hypot(l(0), l(1));
+        if (lineNorm < 1e-10)
+            continue;
+        l /= lineNorm;
+
+        Eigen::Vector3d D = normModelPoints[t] - normModelPoints[r];
+        double boneLength = D.norm();
+        if (boneLength < 1e-10)
+            continue;
+        D /= boneLength;
+        Eigen::Matrix<double, 1, 12> boneRow;
+        boneRow <<
+            l(0) * D(0), l(0) * D(1), l(0) * D(2), 0.0,
+            l(1) * D(0), l(1) * D(1), l(1) * D(2), 0.0,
+            l(2) * D(0), l(2) * D(1), l(2) * D(2), 0.0;
+
+        boneRow *= bone.w;
+        boneRows.push_back(boneRow);
+    }
+    const int numBones = static_cast<int>(boneRows.size());
+    Eigen::MatrixXd A(2 * n + numBones, 12);
+    A.setZero();
+    for (int i = 0; i < n; i++) {
+        double X = normModelPoints[i].x();
+        double Y = normModelPoints[i].y();
+        double Z = normModelPoints[i].z();
+        double x = normImagePoints[i].x();
+        double y = normImagePoints[i].y();
+
+        // y constraint
+        A.row(2 * i) <<
+            0, 0, 0, 0,
+            -X, -Y, -Z, -1,
+            y * X, y * Y, y * Z, y;
+
+        // x constraint
+        A.row(2 * i + 1) <<
+            X, Y, Z, 1,
+            0, 0, 0, 0,
+            -x * X, -x * Y, -x * Z, -x;
+    }
+    for (int i = 0; i < numBones; i++) {
+        A.row(2 * n + i) = boneRows[i];
+    }
+
+    Eigen::JacobiSVD<Eigen::MatrixXd> svd(
+        A, Eigen::ComputeFullV
+    );
+    Eigen::VectorXd h = svd.matrixV().col(11);
+    return Eigen::Map<
+        const Eigen::Matrix<double, 3, 4, Eigen::RowMajor>
+    >(h.data());
 }
-
 
 // CLASS FUNCTIONS
 CameraRecoveryEngine::CameraRecoveryEngine() {}
 
 CameraRecoveryEngine::~CameraRecoveryEngine() {}
 
-Eigen::Matrix<double, 3, 4> CameraRecoveryEngine::RecoverCamera(const std::vector<glm::vec2> imagePoints, const std::vector<glm::vec3> modelPoints) {
+Eigen::Matrix<double, 3, 4> CameraRecoveryEngine::RecoverCamera(const std::vector<glm::vec2> imagePoints, const std::vector<glm::vec3> modelPoints, const std::vector<Bone> bones) {
   // 1. normalize 2d and 3d points
   glm::vec2 centroid2d = average(imagePoints);
   std::vector<glm::vec2> normImagePoints;
@@ -93,9 +152,19 @@ Eigen::Matrix<double, 3, 4> CameraRecoveryEngine::RecoverCamera(const std::vecto
   T3d(1, 3) = -scale * centroid3d.y;
   T3d(2, 3) = -scale * centroid3d.z;
 
+  std::vector<Eigen::Vector2d> normImagePointsEigen;
+  std::vector<Eigen::Vector3d> normModelPointsEigen;
+
+  for (const auto& p : normImagePoints) {
+    normImagePointsEigen.push_back(toEigen(p));
+  }
+  for (const auto& p : normModelPoints) {
+    normModelPointsEigen.push_back(toEigen(p));
+  }
+
   // 2. for each point correspondence: calculate a matrix A_i for then to put them all in a 2n x 3 matrix A
   // 3. take svd of A, and smallest value is least square solution for P'
-  Eigen::Matrix<double, 3, 4> P_transformed = solveDLT(normImagePoints, normModelPoints);
+  Eigen::Matrix<double, 3, 4> P_transformed = solveDLT(normImagePointsEigen, normModelPointsEigen, bones);
 
   // 4. P = T^-1P'U
   Eigen::Matrix<double, 3, 4> P = T2d_inv * P_transformed * T3d;
@@ -137,4 +206,5 @@ Eigen::Matrix<double, 3, 4> CameraRecoveryEngine::RecoverCamera(const std::vecto
   std::cout << "Reprojection RMSE: " << rmse << " pixels\n";
 
   return P;
+
 }
